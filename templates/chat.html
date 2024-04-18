@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <title>ColaZap</title>
+    <style>
+        /* Reset de estilos */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+        }
+
+        /* Estilos da página do WhatsApp Web */
+        .whatsapp-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        .header {
+            background-color: #075e54;
+            color: #fff;
+            padding: 10px;
+            text-align: center;
+        }
+
+        .chat {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .contact-list {
+            flex-basis: 30%;
+            background-color: #f5f5f5;
+            overflow-y: auto;
+        }
+
+        .message-area {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        select {
+            appearance: none;
+            background-color: rgb(185, 185, 185);
+            border: 1px solid #ccc;
+            padding: 8px;
+            border-radius: 5px;
+            font-size: 16px;
+            width: 100%;
+            cursor: pointer;
+            outline: none;
+        }
+
+        select option {
+            background-color: #fff;
+            color: #333;
+        }
+
+        select:hover {
+            border-color: #999;
+        }
+
+        select:focus {
+            border-color: #555;
+        }
+        .message-bubble {
+        padding: 10px;
+        margin-bottom: 10px;
+        border-radius: 10px;
+        word-wrap: break-word; /* Adiciona quebra de palavra */
+        }
+
+        .message-bubble.received {
+            background-color: #98ffb7;
+            align-self: flex-start;
+        }
+
+        .message-bubble.sent {
+            background-color: #dcf8c6;
+            align-self: flex-end;
+        }
+
+        .footer {
+            background-color: #f5f5f5;
+            padding: 10px;
+            display: flex;
+            align-items: center;
+        }
+
+        .footer input[type="text"] {
+            flex: 1;
+            padding: 8px;
+            border: none;
+            border-radius: 20px;
+            margin-right: 10px;
+        }
+
+        .footer button {
+            padding: 8px 20px;
+            background-color: #075e54;
+            color: #fff;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+        }
+
+        .footer button:hover {
+            background-color: #128c7e;
+        }
+    </style>
+</head>
+<body>
+    <div class="whatsapp-container">
+        <header class="header">
+            <h1>BernaZap</h1>
+        </header>
+        <main class="chat">
+            <!-- Lista de contatos e mensagens -->
+            <div class="contact-list">
+                <select name="usuario" id="usuario" onchange ="solicitaMensagens()">
+                        <option value="telefone">Seleciona com quem quer conversar! </option>
+                </select>
+            </div>
+            <div class="message-area">
+                <!-- Mensagens -->
+                <div id="chat-container">
+                    <!-- Mensagens serão adicionadas aqui -->
+                </div>
+            </div>
+        </main>
+        <footer class="footer">
+            <input type="text" placeholder="Type a message">
+            <button>ENVIAR</button>
+        </footer>
+    </div>
+
+    <script type="text/javascript">
+        function solicita_usuarios(){
+            $.ajax({
+                url: "/mostrar_usuarios",
+                type: "GET",
+                success: function(usuarios){
+                    console.log("consegui entrar")
+                    for(let cont = 0; cont < usuarios.length; cont++){
+                        let texto_html = '<option value="'+usuarios[cont]['telefone']+'">'+usuarios[cont]['nome']+'</option>'
+                        $('#usuario').append(texto_html)
+                    }
+                },
+                error: function(){
+                    alert("Erro ao recuperar os contatos!")
+                } 
+            })
+        }
+
+
+    
+        $(document).ready(solicita_usuarios())
+    </script>
+
+<script type="text/javascript">
+    function solicitaMensagens() {
+        $.ajax({
+            url: '/get/mensagens/' + $("#usuario").val(),
+            type: 'GET',
+            success: function(mensagens){
+                $("#chat-container").empty();
+                for(let index = 0; index < mensagens.length; index ++) {
+                    let mensagem = mensagens[index];
+                    let nome = mensagem["nome"];
+                    let conteudo = mensagem["mensagem"];
+                    let classe = mensagem["remetente"] === "eu" ? "sent" : "received";
+
+                    let mensagemHTML = '<div class="message-bubble ' + classe + '">';
+                    mensagemHTML += '<p>' + nome + ':</p>';
+                    mensagemHTML += '<p>' + conteudo + '</p>';
+                    mensagemHTML += '</div>';
+
+                    $("#chat-container").append(mensagemHTML);
+                }
+            }
+        });
+    }
+
+    $(document).ready(solicitaMensagens());
+</script>
+
+<script type="text/javascript">
+    function enviarMensagem() {
+        let mensagem = $("input[type='text']").val();
+        let tel_destinatario = $("#usuario").val();
+
+        if (mensagem !== "" && tel_destinatario !== "telefone") {
+            let dados = {
+                mensagem: mensagem,
+                tel_destinatario: tel_destinatario
+            };
+
+            $.ajax({
+                url: "/post/mensagens",
+                type: "POST",
+                contentType: "application/json", 
+                data: JSON.stringify(dados), 
+                success: function(response) {
+                    console.log("Mensagem enviada com sucesso:", response);
+                    $("input[type='text']").val("");
+                    solicitaMensagens();
+                },
+                error: function() {
+                    alert("Erro ao enviar mensagem!");
+                }
+            });
+        }
+    }
+
+    $(document).ready(function() {
+        $("button").click(enviarMensagem);
+    });
+</script>
+
+</body>
+</html>
